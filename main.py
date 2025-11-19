@@ -3,19 +3,11 @@ from deepchecks.tabular import Dataset
 from deepchecks.tabular.suites import data_integrity
 from evidently.report import Report
 from evidently.metric_preset import DataDriftPreset
-from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-
-def split_df(df):
-    """
-    Функция для разделения данных на обучающую и тестовую выборки
-    """
-
-    # Кодирование текстовых меток целевой переменной
-    iris_target_encoded, _ = pd.factorize(iris_target)
-    scaler = StandardScaler()
-    iris_values_scaled = scaler.fit_transform(iris_values)
-    return train_test_split(iris_values_scaled, iris_target_encoded, test_size=0.3)
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score
+import mlflow
 
 def deepchecks_info(df, label):
     """
@@ -47,3 +39,37 @@ iris_target = iris_data['variety']
 # дальше составляем отчёты
 deepchecks_info(iris_data, label='variety')
 evidently_report(iris_values) # отправляем только признаки
+
+# Дальше подготавливаем данные для эксперимента
+iris_target_encoded, class_names = pd.factorize(iris_target) # Кодирование текстовых меток целевой переменной
+scaler = StandardScaler()
+iris_values_scaled = scaler.fit_transform(iris_values)
+X_train, X_test, y_train, y_test = train_test_split(iris_values_scaled, iris_target_encoded, test_size=0.3)
+
+# Возможные значения количества соседей
+k_values = [3, 5, 10, 15]
+
+for k in k_values:
+    with mlflow.start_run(run_name=f"knn_for_k_{k}"): # названия разные чтобы разделять
+        mlflow.log_param("n_neighbors", k) # Логируем гиперпараметр
+        
+        knn = KNeighborsClassifier(n_neighbors=k)
+        knn.fit(X_train, y_train)
+        
+        y_pred = knn.predict(X_test)
+        
+        # метрики
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred, average='macro')
+        recall = recall_score(y_test, y_pred, average='macro')
+        
+        # Логируем метрики
+        mlflow.log_metric("accuracy", accuracy)
+        mlflow.log_metric("precision", precision)
+        mlflow.log_metric("recall", recall)
+        
+        # Сохраняем модель
+        mlflow.sklearn.log_model(knn, artifact_path=f"model_k{k}")
+        
+        # Выводим метрики
+        print(f"Эксперимент с n_neighbors={k}: Accuracy={accuracy:.2f}, Precision={precision:.2f}, Recall={recall:.2f}")
