@@ -46,6 +46,10 @@ scaler = StandardScaler()
 iris_values_scaled = scaler.fit_transform(iris_values)
 X_train, X_test, y_train, y_test = train_test_split(iris_values_scaled, iris_target_encoded, test_size=0.3)
 
+# Запуск MLflow
+experiment_name = "MyExperiment"
+mlflow.set_experiment(experiment_name)
+
 # Возможные значения количества соседей
 k_values = [3, 5, 10, 15]
 
