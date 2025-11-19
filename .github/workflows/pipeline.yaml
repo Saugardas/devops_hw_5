@@ -36,7 +36,3 @@ jobs:
         path: |
           reports/
           mlruns/models/
-
-    - name: Show MLflow result
-      run: |
-        find ./mlruns -type f -name "meta.yaml"
